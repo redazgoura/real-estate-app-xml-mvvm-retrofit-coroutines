@@ -1,10 +1,6 @@
-# Connect to the Internet - Mars Real Estate
+## RealEstateApp
 
-This is the toy app for Lesson 8 of the [Android App Development in Kotlin course on Udacity](https://classroom.udacity.com/courses/ud9012/).
-
-## MarsRealEstate
-
-MarsRealEstate is a simple demo app using ViewModel & LiveData with Retrofit, Glide and Moshi in Kotlin.
+RealEstateApp is a simple demo app using ViewModel & LiveData with Retrofit, Glide and Moshi in Kotlin.
 
 This app demonstrates the following views and techniques:
 
