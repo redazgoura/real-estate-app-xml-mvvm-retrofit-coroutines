@@ -23,6 +23,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.android.marsrealestate.network.MarsApi
 import com.example.android.marsrealestate.network.MarsProperty
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -33,12 +37,22 @@ import retrofit2.Response
 class OverviewViewModel : ViewModel() {
 
     // The internal MutableLiveData String that stores the status of the most recent request
-    private val _response = MutableLiveData<String>()
+    private val _status = MutableLiveData<String>()
 
     // The external immutable LiveData for the request status String
-    val response: LiveData<String>
-        get() = _response
+    val status: LiveData<String>
+        get() = _status
 
+    private val _property = MutableLiveData<MarsProperty>()
+
+    val property: LiveData<MarsProperty>
+        get() = _property
+
+    /**creating coroutine job and coroutineScope using main dispatcher*/
+    private var viewModelJob = Job()
+
+    /**Dispatchers.Main uses the UI thread since retrofit does all its work in the BG thread */
+    private val coroutineScope = CoroutineScope(viewModelJob + Dispatchers.Main )
     /**
      * Call getMarsRealEstateProperties() on init so we can display status immediately.
      */
@@ -53,17 +67,31 @@ class OverviewViewModel : ViewModel() {
      */
     private fun getMarsRealEstateProperties() {
 
-        // call enqueue on the call back to start the network request on a bg thread
-        MarsApi.retrofitService.getProperties().enqueue( object: Callback<List<MarsProperty>> {
+        // coroutines manage concurrency
+        coroutineScope.launch {
 
-            override fun onFailure(call: Call<List<MarsProperty>>, t: Throwable) {
-                _response.value = "Failure: " + t.message
-                Log.i("Failure", "${ t.message }")
-            }
+            // call enqueue on the call back to start the network request on a bg thread
+            // call getProperties from MarsApiService creates+starts the network call in bg thread & return the deferred
+            var getPropertiesDeferred = MarsApi.retrofitService.getProperties()
+            // calling await on defered return result from network call when the values are ready w/o blocking the current thread
+            try {
 
-            override fun onResponse(call: Call<List<MarsProperty>>, response: Response<List<MarsProperty>>) {
-                _response.value = "Success: ${response.body()?.size} Mars properties retrieved"
+                var listResult = getPropertiesDeferred.await()
+
+                if (listResult.size > 0) {
+                    _property.value = listResult[0]
+                }
+               // _response.value = "Success: ${listResult.size} Mars properties retrieved"
+            }catch (e: Exception){
+
+                _status.value = "Failure: ${e.message}"
             }
-        })
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // cancel job after finishing its task
+        viewModelJob.cancel()
     }
 }
