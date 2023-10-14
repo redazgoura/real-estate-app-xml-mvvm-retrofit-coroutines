@@ -22,6 +22,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.android.marsrealestate.network.MarsApi
+import com.example.android.marsrealestate.network.MarsApiFilter
 import com.example.android.marsrealestate.network.MarsProperty
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,9 +45,13 @@ class OverviewViewModel : ViewModel() {
         get() = _status
 
     private val _properties = MutableLiveData<List<MarsProperty>>()
-
     val properties: LiveData<List<MarsProperty>>
         get() = _properties
+
+
+    private val _navigateToSelectedProperty = MutableLiveData<MarsProperty>()
+    val navigateToSelectedProperty: LiveData<MarsProperty>
+        get() = _navigateToSelectedProperty
 
     /**creating coroutine job and coroutineScope using main dispatcher*/
     private var viewModelJob = Job()
@@ -57,7 +62,7 @@ class OverviewViewModel : ViewModel() {
      * Call getMarsRealEstateProperties() on init so we can display status immediately.
      */
     init {
-        getMarsRealEstateProperties()
+        getMarsRealEstateProperties(MarsApiFilter.SHOW_ALL)
     }
 
     /**
@@ -65,14 +70,14 @@ class OverviewViewModel : ViewModel() {
      ** MarsApi.retrofitService to enqueue the Retrofit request in getMarsRealEstateProperties(),
      ** overriding the required Retrofit callbacks to assign the JSON response
      */
-    private fun getMarsRealEstateProperties() {
+    private fun getMarsRealEstateProperties(filter: MarsApiFilter) {
 
         // coroutines manage concurrency
         coroutineScope.launch {
 
             // call enqueue on the call back to start the network request on a bg thread
             // call getProperties from MarsApiService creates+starts the network call in bg thread & return the deferred
-            var getPropertiesDeferred = MarsApi.retrofitService.getProperties()
+            var getPropertiesDeferred = MarsApi.retrofitService.getProperties(filter.value)
             // calling await on defered return result from network call when the values are ready w/o blocking the current thread
             try {
 
@@ -98,6 +103,19 @@ class OverviewViewModel : ViewModel() {
         super.onCleared()
         // cancel job after finishing its task
         viewModelJob.cancel()
+    }
+
+    /** initiate navigation to the detail screen **/
+    fun displayPropertyDetails(marsProperty: MarsProperty) {
+        _navigateToSelectedProperty.value = marsProperty
+    }
+
+    /** set _navigateToSelectedProperty to false once navigation is completed to prevent unwanted extra navigations **/
+    fun displayPropertyDetailsComplete() { _navigateToSelectedProperty.value = null }
+
+    /** to requery the data by calling getMarsRealEstateProperties with the new filter*/
+    fun updateFilter(filter: MarsApiFilter) {
+        getMarsRealEstateProperties(filter)
     }
 }
 
