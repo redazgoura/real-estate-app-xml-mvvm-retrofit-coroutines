@@ -37,16 +37,16 @@ import retrofit2.Response
 class OverviewViewModel : ViewModel() {
 
     // The internal MutableLiveData String that stores the status of the most recent request
-    private val _status = MutableLiveData<String>()
+    private val _status = MutableLiveData<MarsApiStatus>()
 
     // The external immutable LiveData for the request status String
-    val status: LiveData<String>
+    val status: LiveData<MarsApiStatus>
         get() = _status
 
-    private val _property = MutableLiveData<MarsProperty>()
+    private val _properties = MutableLiveData<List<MarsProperty>>()
 
-    val property: LiveData<MarsProperty>
-        get() = _property
+    val properties: LiveData<List<MarsProperty>>
+        get() = _properties
 
     /**creating coroutine job and coroutineScope using main dispatcher*/
     private var viewModelJob = Job()
@@ -79,15 +79,20 @@ class OverviewViewModel : ViewModel() {
                 var listResult = getPropertiesDeferred.await()
 
                 if (listResult.size > 0) {
-                    _property.value = listResult[0]
+
+                    _properties.value = listResult
                 }
                // _response.value = "Success: ${listResult.size} Mars properties retrieved"
             }catch (e: Exception){
 
-                _status.value = "Failure: ${e.message}"
+                _status.value = MarsApiStatus.ERROR
+                //In the error case, clear the properties LiveData by setting it to a new empty ArrayList
+                _properties.value = ArrayList()
             }
         }
     }
+
+
 
     override fun onCleared() {
         super.onCleared()
@@ -95,3 +100,5 @@ class OverviewViewModel : ViewModel() {
         viewModelJob.cancel()
     }
 }
+
+enum class MarsApiStatus { LOADING, ERROR, DONE }
